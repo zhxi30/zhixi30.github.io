@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>二手书小助手</title>
+  <style>
+    body {
+      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+      margin: 0;
+      padding: 12px;
+      background: #f9f9f9;
+      color: #333;
+    }
+    #chat {
+      height: 380px;
+      overflow-y: auto;
+      padding: 12px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      margin-bottom: 10px;
+    }
+    .msg { margin-bottom: 12px; line-height: 1.5; }
+    .user { color: #007aff; font-weight: bold; }
+    .bot { color: #333; }
+    #input-area {
+      display: flex;
+      gap: 8px;
+    }
+    #input {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    #send {
+      padding: 10px 16px;
+      background: #007aff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    #send:hover { background: #0062cc; }
+    #send:disabled { background: #ccc; }
+  </style>
+</head>
+<body>
+  <div id="chat"></div>
+  <div id="input-area">
+    <input type="text" id="input" placeholder="请输入书名、作者或课程名..." maxlength="100" />
+    <button id="send">发送</button>
+  </div>
+
+  <script>
+    // 🔑 替换为你的百炼 API Key（务必设置安全限制！）
+    const API_KEY = 'sk-90fc2c1430514dc3ab9b93e962a03f33'; // ←←← 这里填你的 Key
+    const MODEL = 'qwen-plus';
+
+    const chatBox = document.getElementById('chat');
+    const input = document.getElementById('input');
+    const sendBtn = document.getElementById('send');
+
+    function addMessage(role, text) {
+      const div = document.createElement('div');
+      div.className = 'msg';
+      div.innerHTML = `<span class="${role}">${role === 'user' ? '你' : '小助手'}：</span>${text}`;
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const msg = input.value.trim();
+      if (!msg) return;
+
+      addMessage('user', msg);
+      input.value = '';
+      sendBtn.disabled = true;
+      sendBtn.textContent = '思考中...';
+
+      try {
+        const res = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: MODEL,
+            input: {
+              messages: [
+                { role: 'system', content: '你是一个二手书平台助手，帮助用户根据关键词搜索书籍或根据课程推荐教材。回答简洁，结构化，优先列出书名、作者、版本、价格和成色。若无结果，回复“暂未找到相关书籍”。' },
+                { role: 'user', content: msg }
+              ]
+            },
+            parameters: { result_format: 'message' }
+          })
+        });
+
+        const data = await res.json();
+        const reply = data.output?.choices?.[0]?.message?.content || '抱歉，我暂时无法回答。';
+        addMessage('bot', reply);
+      } catch (e) {
+        addMessage('bot', '网络错误，请稍后重试。');
+        console.error(e);
+      } finally {
+        sendBtn.disabled = false;
+        sendBtn.textContent = '发送';
+      }
+    }
+
+    sendBtn.onclick = sendMessage;
+    input.onkeypress = (e) => { if (e.key === 'Enter') sendMessage(); };
+  </script>
+</body>
+</html>
