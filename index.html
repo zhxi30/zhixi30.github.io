@@ -56,9 +56,8 @@
   </div>
 
   <script>
-    // 🔑 替换为你的百炼 API Key（务必设置安全限制！）
-    const API_KEY = 'sk-90fc2c1430514dc3ab9b93e962a03f33'; // ←←← 这里填你的 Key
-    const MODEL = 'qwen-plus';
+    // ✅ 代理接口地址（来自阿里云函数计算）
+    const PROXY_URL = 'https://book-astant-api-uomuhhwjpv.cn-hangzhou.fcapp.run/api';
 
     const chatBox = document.getElementById('chat');
     const input = document.getElementById('input');
@@ -82,30 +81,25 @@
       sendBtn.textContent = '思考中...';
 
       try {
-        const res = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation', {
+        // ✅ 调用你自己的代理接口，不再直接调百炼
+        const res = await fetch(PROXY_URL, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${API_KEY}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            model: MODEL,
-            input: {
-              messages: [
-                { role: 'system', content: '你是一个二手书平台助手，帮助用户根据关键词搜索书籍或根据课程推荐教材。回答简洁，结构化，优先列出书名、作者、版本、价格和成色。若无结果，回复“暂未找到相关书籍”。' },
-                { role: 'user', content: msg }
-              ]
-            },
-            parameters: { result_format: 'message' }
-          })
+          body: JSON.stringify({ msg })
         });
+
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
 
         const data = await res.json();
         const reply = data.output?.choices?.[0]?.message?.content || '抱歉，我暂时无法回答。';
         addMessage('bot', reply);
       } catch (e) {
         addMessage('bot', '网络错误，请稍后重试。');
-        console.error(e);
+        console.error('Error:', e);
       } finally {
         sendBtn.disabled = false;
         sendBtn.textContent = '发送';
